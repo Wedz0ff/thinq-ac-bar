@@ -79,12 +79,23 @@ final class AppState {
         }
     }
 
-    func save(pat: String, country: String) async {
-        self.pat = pat
-        self.country = country
-        Keychain.set(pat)
-        UserDefaults.standard.set(country, forKey: "country")
-        await refresh()
+    /// Saves the settings only if LG accepts the token. Returns the error to show in the form, if any.
+    func save(pat: String, country: String) async -> String? {
+        do {
+            let fresh = try await ThinQ(pat: pat, country: country).devices()
+            let status = Keychain.set(pat)
+            UserDefaults.standard.set(country, forKey: "country")
+            self.pat = pat
+            self.country = country
+            edits += 1
+            devices = fresh
+            error = status == errSecSuccess
+                ? nil
+                : "Could not save the token to the Keychain (error \(status)). It will be asked for again next launch."
+            return nil
+        } catch let failure {
+            return failure.localizedDescription
+        }
     }
 
     /// Updates the device locally first, then sends the command; a failure puts the old value back.
@@ -271,22 +282,49 @@ struct SettingsView: View {
     @State private var pat = ""
     @State private var country = ""
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @State private var saving = false
+    @State private var failure: String?
     let done: () -> Void
+
+    private var token: String { pat.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("LG ThinQ").font(.headline)
+            Text("AC Bar needs a ThinQ Personal Access Token. It is kept in your Keychain and sent only to LG.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Link("Create a token at connect-pat.lgthinq.com", destination: URL(string: "https://connect-pat.lgthinq.com")!)
+                .font(.caption)
             SecureField("Personal Access Token", text: $pat)
-            TextField("Country (BR, US…)", text: $country)
+            TextField("Country code (BR, US…)", text: $country)
+                .onChange(of: country) { _, value in
+                    country = String(value.filter(\.isLetter).uppercased().prefix(2))
+                }
             Toggle("Launch at login", isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { _, enabled in
                     try? enabled ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
+                    launchAtLogin = SMAppService.mainApp.status == .enabled
                 }
-            Button("Save") {
-                Task { await state.save(pat: pat.trimmingCharacters(in: .whitespacesAndNewlines), country: country.uppercased()) }
-                done()
+            if let failure {
+                Text(failure).font(.caption).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
             }
-            .disabled(pat.isEmpty || country.isEmpty)
+            HStack {
+                if !state.pat.isEmpty { Button("Cancel", action: done) }
+                Spacer()
+                if saving { ProgressView().controlSize(.small) }
+                Button("Save") {
+                    saving = true
+                    Task {
+                        failure = await state.save(pat: token, country: country)
+                        saving = false
+                        if failure == nil { done() }
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(token.isEmpty || country.count != 2 || saving)
+            }
         }
         .textFieldStyle(.roundedBorder)
         .onAppear {

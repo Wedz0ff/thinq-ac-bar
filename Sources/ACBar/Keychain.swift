@@ -18,10 +18,11 @@ enum Keychain {
         return String(data: data, encoding: .utf8)
     }
 
-    static func set(_ value: String) {
+    @discardableResult
+    static func set(_ value: String) -> OSStatus {
         SecItemDelete(item as CFDictionary)
         var query = item
         query[kSecValueData as String] = Data(value.utf8)
-        SecItemAdd(query as CFDictionary, nil)
+        return SecItemAdd(query as CFDictionary, nil)
     }
 }
