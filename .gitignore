@@ -1,0 +1,4 @@
+.build/
+.swiftpm/
+ACBar.app/
+.DS_Store
