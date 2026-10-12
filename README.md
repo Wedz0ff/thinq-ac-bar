@@ -29,7 +29,9 @@ To keep it, move `ACBar.app` to `/Applications` and turn on **Launch at login** 
 
 1. Create a ThinQ Personal Access Token by following the [Home Assistant LG ThinQ guide](https://www.home-assistant.io/integrations/lg_thinq/).
 2. Click the AC icon in the menu bar.
-3. Paste the token, enter your country code (`BR`, `US`, ...), and click **Save**.
+3. Paste the token and click **Save**.
+
+LG requires the account's country on every request. The app sends your Mac's region (System Settings > General > Language & Region), or `US` if none is set, so that region must match the country of your LG account.
 
 The token is stored in the macOS Keychain. It is sent only to `api-aic.lgthinq.com`.
 
