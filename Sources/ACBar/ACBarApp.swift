@@ -33,21 +33,55 @@ func nextTarget(_ target: Double, by step: Double) -> Double {
 }
 
 @main
-struct ACBarApp: App {
-    @State private var state = AppState()
+enum Main {
+    @MainActor static func main() {
+        let delegate = AppDelegate()
+        NSApplication.shared.delegate = delegate
+        NSApp.setActivationPolicy(.accessory)
+        NSApp.run()
+    }
+}
 
-    var body: some Scene {
-        MenuBarExtra {
-            ContentView().environment(state)
-        } label: {
-            if state.error != nil {
-                Image(systemName: "exclamationmark.triangle")
-            } else {
-                Image(systemName: state.devices.contains(where: \.on) ? "air.conditioner.horizontal.fill" : "air.conditioner.horizontal")
-            }
-            if let text = menuBarText(state.devices) { Text(text) }
+/// Owns the menu bar item and its popover. AppKit instead of SwiftUI's `MenuBarExtra`,
+/// which ignores right (two-finger) clicks and offers no way to handle them.
+@MainActor
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    private let state = AppState()
+    private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    private let popover = NSPopover()
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let host = NSHostingController(rootView: ContentView().environment(state))
+        host.sizingOptions = .preferredContentSize
+        popover.contentViewController = host
+        popover.behavior = .transient
+
+        item.button?.target = self
+        item.button?.action = #selector(toggle)
+        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        item.button?.imagePosition = .imageLeading
+        updateLabel()
+    }
+
+    @objc private func toggle() {
+        guard let button = item.button else { return }
+        if popover.isShown { return popover.performClose(nil) }
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        NSApp.activate()
+        Task { await state.refresh() }
+    }
+
+    /// Redraws the menu bar item, and again whenever the state it read changes.
+    private func updateLabel() {
+        withObservationTracking {
+            let symbol = state.error != nil
+                ? "exclamationmark.triangle"
+                : state.devices.contains(where: \.on) ? "air.conditioner.horizontal.fill" : "air.conditioner.horizontal"
+            item.button?.image = NSImage(systemSymbolName: symbol, accessibilityDescription: "AC Bar")
+            item.button?.title = menuBarText(state.devices) ?? ""
+        } onChange: { [weak self] in
+            Task { @MainActor in self?.updateLabel() }
         }
-        .menuBarExtraStyle(.window)
     }
 }
 
@@ -202,7 +236,6 @@ struct ContentView: View {
         }
         .padding(14)
         .frame(width: 300)
-        .task { await state.refresh() }
     }
 }
 
