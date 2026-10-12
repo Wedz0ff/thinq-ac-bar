@@ -15,7 +15,12 @@ jobs:
       - uses: actions/checkout@v4
       - run: swift test
       - run: ./build.sh
-      - run: ditto -c -k --keepParent ACBar.app ACBar.zip
-      - run: gh release create "$GITHUB_REF_NAME" ACBar.zip --verify-tag --generate-notes
+      - name: Package as a disk image with a shortcut to Applications
+        run: |
+          mkdir dmg
+          cp -R ACBar.app dmg/
+          ln -s /Applications dmg/Applications
+          hdiutil create -volname "AC Bar" -srcfolder dmg -ov -format UDZO ACBar.dmg
+      - run: gh release create "$GITHUB_REF_NAME" ACBar.dmg --verify-tag --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}

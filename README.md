@@ -12,8 +12,8 @@ Control your LG ThinQ air conditioner from the Mac menu bar.
 
 ## Install
 
-1. Download `ACBar.zip` from the [latest release](https://github.com/Wedz0ff/thinq-ac-bar/releases/latest) and unzip it.
-2. Move `ACBar.app` to `/Applications` and open it.
+1. Download `ACBar.dmg` from the [latest release](https://github.com/Wedz0ff/thinq-ac-bar/releases/latest) and open it.
+2. Drag `ACBar` onto the `Applications` shortcut, then open it from Applications.
 3. macOS blocks the first launch because the app is not notarized by Apple. Open **System Settings > Privacy & Security**, scroll to the message about ACBar, and click **Open Anyway**. This is needed once.
 
 Requires macOS 14 or later, on Apple Silicon or Intel. To start it with your Mac, turn on **Launch at login** in the app's settings.
