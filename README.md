@@ -10,24 +10,28 @@ Control your LG ThinQ air conditioner from the Mac menu bar.
 - Changes power, target temperature, mode, fan speed, swing, and energy saving.
 - Shows the target temperature in the menu bar while an AC is running.
 
-## Requirements
+## Install
 
-- macOS 14 or later
-- Xcode 15 or later (to build)
-- An LG ThinQ account with a Personal Access Token
+1. Download `ACBar.zip` from the [latest release](https://github.com/Wedz0ff/thinq-ac-bar/releases/latest) and unzip it.
+2. Move `ACBar.app` to `/Applications` and open it.
+3. macOS blocks the first launch because the app is not notarized by Apple. Open **System Settings > Privacy & Security**, scroll to the message about ACBar, and click **Open Anyway**. This is needed once.
 
-## Build And Run
+Requires macOS 14 or later, on Apple Silicon or Intel. To start it with your Mac, turn on **Launch at login** in the app's settings.
+
+## Build From Source
+
+Needs Xcode 15 or later.
 
 ```bash
 ./build.sh
 open ACBar.app
 ```
 
-To keep it, move `ACBar.app` to `/Applications` and turn on **Launch at login** in the app's settings.
+An app you build yourself is not blocked by macOS.
 
 ## Setup
 
-1. Create a ThinQ Personal Access Token by following the [Home Assistant LG ThinQ guide](https://www.home-assistant.io/integrations/lg_thinq/).
+1. Create a ThinQ Personal Access Token at [connect-pat.lgthinq.com](https://connect-pat.lgthinq.com).
 2. Click the AC icon in the menu bar.
 3. Paste the token and click **Save**.
 
@@ -48,3 +52,7 @@ swift test
 - Americas accounts only: requests go to `api-aic.lgthinq.com`. Accounts in Europe or Asia use other LG hosts and are not supported.
 - Mode and fan options and the 18-30 °C range are fixed in `Sources/ACBar/ACBarApp.swift`. They match model `RAC_056905_WW`; other models may support different values.
 - Temperature changes in 1 °C steps.
+
+## License
+
+[MIT](LICENSE)
