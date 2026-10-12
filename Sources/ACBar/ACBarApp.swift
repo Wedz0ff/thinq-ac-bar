@@ -7,6 +7,11 @@ let temperatureStep = 1.0
 let modes = [("AUTO", "Auto"), ("COOL", "Cool"), ("AIR_DRY", "Dry"), ("FAN", "Fan")]
 let fanSpeeds = [("AUTO", "Auto"), ("LOW", "Low"), ("MID", "Mid"), ("HIGH", "High")]
 
+/// Target after one +/- click, kept inside the supported range.
+func nextTarget(_ target: Double, by step: Double) -> Double {
+    min(max(target + step, temperatureRange.lowerBound), temperatureRange.upperBound)
+}
+
 @main
 struct ACBarApp: App {
     @State private var state = AppState()
@@ -31,10 +36,14 @@ final class AppState {
     var pat = Keychain.get() ?? ""
     var country = UserDefaults.standard.string(forKey: "country") ?? "BR"
 
+    /// Counts local changes, so a refresh that started before one does not overwrite it.
+    private var edits = 0
     private var temperatureTasks: [String: Task<Void, Never>] = [:]
+    private var targetBeforeClicks: [String: Double?] = [:]
     private var api: ThinQ { ThinQ(pat: pat, country: country) }
 
     init() {
+        loading = !pat.isEmpty
         Task {
             while true {
                 await refresh()
@@ -47,8 +56,10 @@ final class AppState {
         guard !pat.isEmpty else { return }
         loading = true
         defer { loading = false }
+        let before = edits
         do {
-            devices = try await api.devices()
+            let fresh = try await api.devices()
+            if edits == before { devices = fresh }
             error = nil
         } catch let failure {
             error = failure.localizedDescription
@@ -63,16 +74,25 @@ final class AppState {
         await refresh()
     }
 
-    /// Updates the device locally first, then sends the command; a failure reloads the real state.
+    /// Updates the device locally first, then sends the command; a failure puts the old value back.
     func set(_ id: String, _ body: [String: Any], apply: (inout AC) -> Void) {
         guard let index = devices.firstIndex(where: { $0.id == id }) else { return }
+        let previous = devices[index]
         apply(&devices[index])
+        send(id, body) { $0 = previous }
+    }
+
+    private func send(_ id: String, _ body: [String: Any], revert: @escaping (inout AC) -> Void) {
+        edits += 1
         let data = try! JSONSerialization.data(withJSONObject: body)
         Task {
             do {
                 try await api.control(id, data)
+                edits += 1
                 error = nil
             } catch let failure {
+                if let index = devices.firstIndex(where: { $0.id == id }) { revert(&devices[index]) }
+                edits += 1
                 await refresh()
                 error = failure.localizedDescription
             }
@@ -82,12 +102,18 @@ final class AppState {
     /// Debounced so repeated +/- clicks send one command.
     func setTemperature(_ id: String, _ temperature: Double) {
         guard let index = devices.firstIndex(where: { $0.id == id }) else { return }
+        let previous = targetBeforeClicks[id] ?? devices[index].target
+        targetBeforeClicks[id] = previous
         devices[index].target = temperature
+        edits += 1
         temperatureTasks[id]?.cancel()
         temperatureTasks[id] = Task {
             try? await Task.sleep(for: .milliseconds(600))
             if Task.isCancelled { return }
-            set(id, ["temperature": ["targetTemperature": temperature, "unit": "C"]]) { _ in }
+            targetBeforeClicks[id] = nil
+            // The API rejects a temperature change while the AC is off.
+            guard devices.first(where: { $0.id == id })?.on == true else { return }
+            send(id, ["temperature": ["targetTemperature": temperature, "unit": "C"]]) { $0.target = previous }
         }
     }
 }
@@ -173,11 +199,11 @@ struct DeviceCard: View {
     }
 
     private func stepButton(_ symbol: String, by step: Double) -> some View {
-        let next = (ac.target ?? 0) + step
+        let next = nextTarget(ac.target ?? 0, by: step)
         return Button { state.setTemperature(ac.id, next) } label: {
             Image(systemName: symbol).frame(width: 28, height: 28)
         }
-        .disabled(ac.target == nil || !temperatureRange.contains(next))
+        .disabled(ac.target == nil || next == ac.target)
         .accessibilityLabel(step < 0 ? "Decrease temperature" : "Increase temperature")
     }
 
