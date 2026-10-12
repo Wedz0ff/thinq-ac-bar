@@ -57,7 +57,8 @@ final class AppState {
     var error: String?
     var loading = false
     var pat = Keychain.get() ?? ""
-    var country = UserDefaults.standard.string(forKey: "country") ?? "BR"
+    /// LG needs the account's country on every request; the Mac's region stands in for it.
+    let country = Locale.current.region?.identifier ?? "US"
 
     /// Counts local changes, so a refresh that started before one does not overwrite it.
     private var edits = 0
@@ -90,13 +91,11 @@ final class AppState {
     }
 
     /// Saves the settings only if LG accepts the token. Returns the error to show in the form, if any.
-    func save(pat: String, country: String) async -> String? {
+    func save(pat: String) async -> String? {
         do {
             let fresh = try await ThinQ(pat: pat, country: country).devices()
             let status = Keychain.set(pat)
-            UserDefaults.standard.set(country, forKey: "country")
             self.pat = pat
-            self.country = country
             edits += 1
             devices = fresh
             error = status == errSecSuccess
@@ -189,10 +188,14 @@ struct ContentView: View {
                     ProgressView().controlSize(.small)
                 } else {
                     Button("Refresh", systemImage: "arrow.clockwise") { Task { await state.refresh() } }
+                        .help("Refresh")
                 }
                 Button("Settings", systemImage: "gearshape") { showSettings.toggle() }
+                    .help("Settings")
                 Spacer()
-                Button("Quit") { NSApp.terminate(nil) }
+                Button("Quit", systemImage: "power") { NSApp.terminate(nil) }
+                    .help("Quit AC Bar")
+                    .keyboardShortcut("q")
             }
             .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
@@ -290,7 +293,6 @@ struct DeviceCard: View {
 struct SettingsView: View {
     @Environment(AppState.self) private var state
     @State private var pat = ""
-    @State private var country = ""
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var saving = false
     @State private var failure: String?
@@ -308,10 +310,6 @@ struct SettingsView: View {
             Link("Create a token at connect-pat.lgthinq.com", destination: URL(string: "https://connect-pat.lgthinq.com")!)
                 .font(.caption)
             SecureField("Personal Access Token", text: $pat)
-            TextField("Country code (BR, US…)", text: $country)
-                .onChange(of: country) { _, value in
-                    country = String(value.filter(\.isLetter).uppercased().prefix(2))
-                }
             Toggle("Launch at login", isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { _, enabled in
                     try? enabled ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
@@ -327,19 +325,16 @@ struct SettingsView: View {
                 Button("Save") {
                     saving = true
                     Task {
-                        failure = await state.save(pat: token, country: country)
+                        failure = await state.save(pat: token)
                         saving = false
                         if failure == nil { done() }
                     }
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(token.isEmpty || country.count != 2 || saving)
+                .disabled(token.isEmpty || saving)
             }
         }
         .textFieldStyle(.roundedBorder)
-        .onAppear {
-            pat = state.pat
-            country = state.country
-        }
+        .onAppear { pat = state.pat }
     }
 }
