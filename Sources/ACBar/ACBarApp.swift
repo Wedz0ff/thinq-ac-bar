@@ -127,20 +127,35 @@ struct ContentView: View {
             if state.pat.isEmpty || showSettings {
                 SettingsView { showSettings = false }
             } else if state.devices.isEmpty {
-                Text(state.loading ? "Loading…" : "No air conditioners found")
-                    .foregroundStyle(.secondary)
+                if state.loading {
+                    ProgressView().controlSize(.small).frame(maxWidth: .infinity)
+                } else {
+                    Text("No air conditioners found").foregroundStyle(.secondary)
+                }
             } else {
                 ForEach(state.devices) { DeviceCard(ac: $0) }
             }
 
             if let error = state.error {
-                Text(error).font(.caption).foregroundStyle(.red).lineLimit(3)
+                HStack(alignment: .top, spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.yellow)
+                    Text(error).font(.caption).lineLimit(3)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Dismiss", systemImage: "xmark") { state.error = nil }
+                        .labelStyle(.iconOnly)
+                        .buttonStyle(.borderless)
+                }
+                .padding(8)
+                .background(.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             }
 
             Divider()
             HStack {
-                Button("Refresh", systemImage: "arrow.clockwise") { Task { await state.refresh() } }
-                    .disabled(state.loading)
+                if state.loading {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button("Refresh", systemImage: "arrow.clockwise") { Task { await state.refresh() } }
+                }
                 Button("Settings", systemImage: "gearshape") { showSettings.toggle() }
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }
