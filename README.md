@@ -29,7 +29,7 @@ To keep it, move `ACBar.app` to `/Applications` and turn on **Launch at login** 
 
 1. Create a ThinQ Personal Access Token by following the [Home Assistant LG ThinQ guide](https://www.home-assistant.io/integrations/lg_thinq/).
 2. Click the AC icon in the menu bar.
-3. Paste the token, enter your country code (`BR`, `US`, `KR`, ...), and click **Save**.
+3. Paste the token, enter your country code (`BR`, `US`, ...), and click **Save**.
 
 The token is stored in the macOS Keychain. It is sent only to `api-aic.lgthinq.com`.
 
@@ -43,5 +43,6 @@ swift test
 
 ## Limitations
 
+- Americas accounts only: requests go to `api-aic.lgthinq.com`. Accounts in Europe or Asia use other LG hosts and are not supported.
 - Mode and fan options and the 18-30 °C range are fixed in `Sources/ACBar/ACBarApp.swift`. They match model `RAC_056905_WW`; other models may support different values.
 - Temperature changes in 1 °C steps.
