@@ -226,6 +226,8 @@ struct ContentView: View {
                 }
                 Button("Settings", systemImage: "gearshape") { showSettings.toggle() }
                     .help("Settings")
+                Button("About", systemImage: "info.circle", action: showAbout)
+                    .help("About AC Bar")
                 Spacer()
                 Button("Quit", systemImage: "power") { NSApp.terminate(nil) }
                     .help("Quit AC Bar")
@@ -237,6 +239,24 @@ struct ContentView: View {
         .padding(14)
         .frame(width: 300)
     }
+}
+
+/// The standard macOS About panel; name, version, and copyright come from Info.plist.
+@MainActor private func showAbout() {
+    let centered = NSMutableParagraphStyle()
+    centered.alignment = .center
+    let text: [NSAttributedString.Key: Any] = [
+        .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+        .foregroundColor: NSColor.secondaryLabelColor,
+        .paragraphStyle: centered,
+    ]
+    let credits = NSMutableAttributedString(string: "Unofficial app. Not affiliated with LG Electronics.\n", attributes: text)
+    credits.append(NSAttributedString(
+        string: "github.com/Wedz0ff/thinq-ac-bar",
+        attributes: text.merging([.link: URL(string: "https://github.com/Wedz0ff/thinq-ac-bar")!]) { $1 }
+    ))
+    NSApp.activate()
+    NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
 }
 
 struct DeviceCard: View {
