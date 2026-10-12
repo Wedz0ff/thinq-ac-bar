@@ -7,6 +7,19 @@ let temperatureStep = 1.0
 let modes = [("AUTO", "Auto"), ("COOL", "Cool"), ("AIR_DRY", "Dry"), ("FAN", "Fan")]
 let fanSpeeds = [("AUTO", "Auto"), ("LOW", "Low"), ("MID", "Mid"), ("HIGH", "High")]
 
+extension AC {
+    var modeName: String { modes.first { $0.0 == mode }?.1 ?? mode.capitalized }
+
+    var tint: Color {
+        switch mode {
+        case "COOL": .blue
+        case "AIR_DRY": .teal
+        case "FAN": .gray
+        default: .green
+        }
+    }
+}
+
 /// Target after one +/- click, kept inside the supported range.
 func nextTarget(_ target: Double, by step: Double) -> Double {
     min(max(target + step, temperatureRange.lowerBound), temperatureRange.upperBound)
@@ -176,11 +189,11 @@ struct DeviceCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
+                Image(systemName: "air.conditioner.horizontal.fill")
+                    .foregroundStyle(ac.on ? ac.tint : .secondary)
                 VStack(alignment: .leading) {
                     Text(ac.name).font(.headline)
-                    if let current = ac.current {
-                        Text("Room \(current.formatted())°").font(.caption).foregroundStyle(.secondary)
-                    }
+                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Toggle("Power", isOn: binding(\.on) {
@@ -193,9 +206,10 @@ struct DeviceCard: View {
             Group {
                 HStack {
                     stepButton("minus", by: -temperatureStep)
-                    Text(ac.target.map { "\($0.formatted())°" } ?? "--")
-                        .font(.system(size: 34, weight: .light))
+                    Text(ac.on ? ac.target.map { "\($0.formatted())°" } ?? "--" : "Off")
+                        .font(.system(size: 40, weight: .light, design: .rounded))
                         .monospacedDigit()
+                        .foregroundStyle(ac.on ? ac.tint : .secondary)
                         .frame(maxWidth: .infinity)
                     stepButton("plus", by: temperatureStep)
                 }
@@ -210,24 +224,38 @@ struct DeviceCard: View {
                 }
             }
             .disabled(!ac.on)
+            .opacity(ac.on ? 1 : 0.5)
         }
+        .padding(12)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var subtitle: String {
+        [ac.current.map { "Room \($0.formatted())°" }, ac.on ? ac.modeName : "Off"]
+            .compactMap { $0 }
+            .joined(separator: " · ")
     }
 
     private func stepButton(_ symbol: String, by step: Double) -> some View {
         let next = nextTarget(ac.target ?? 0, by: step)
         return Button { state.setTemperature(ac.id, next) } label: {
-            Image(systemName: symbol).frame(width: 28, height: 28)
+            Image(systemName: symbol).font(.title3).frame(width: 36, height: 36)
+                .background(.quaternary, in: Circle())
         }
+        .buttonStyle(.plain)
         .disabled(ac.target == nil || next == ac.target)
         .accessibilityLabel(step < 0 ? "Decrease temperature" : "Increase temperature")
     }
 
     private func picker(_ title: String, _ options: [(String, String)], _ selection: Binding<String>) -> some View {
-        Picker(title, selection: selection) {
-            ForEach(options, id: \.0) { Text($0.1).tag($0.0) }
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+            Picker(title, selection: selection) {
+                ForEach(options, id: \.0) { Text($0.1).tag($0.0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
     }
 
     private func binding<T>(_ keyPath: WritableKeyPath<AC, T>, _ body: @escaping (T) -> [String: Any]) -> Binding<T> {
