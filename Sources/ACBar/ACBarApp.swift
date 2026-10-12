@@ -45,16 +45,18 @@ enum Main {
 /// Owns the menu bar item and its popover. AppKit instead of SwiftUI's `MenuBarExtra`,
 /// which ignores right (two-finger) clicks and offers no way to handle them.
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private let state = AppState()
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let popover = NSPopover()
+    private var outsideClicks: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let host = NSHostingController(rootView: ContentView().environment(state))
         host.sizingOptions = .preferredContentSize
         popover.contentViewController = host
         popover.behavior = .transient
+        popover.delegate = self
 
         item.button?.target = self
         item.button?.action = #selector(toggle)
@@ -68,7 +70,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if popover.isShown { return popover.performClose(nil) }
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         NSApp.activate()
+        // `.transient` only closes the popover when this app is active, which macOS does not guarantee for a
+        // menu bar app, so clicks in other apps are watched too. Clicks on the menu bar item go to `toggle`.
+        outsideClicks = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, self.item.button?.window?.frame.contains(NSEvent.mouseLocation) != true else { return }
+                self.popover.performClose(nil)
+            }
+        }
         Task { await state.refresh() }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        if let outsideClicks { NSEvent.removeMonitor(outsideClicks) }
+        outsideClicks = nil
     }
 
     /// Redraws the menu bar item, and again whenever the state it read changes.
