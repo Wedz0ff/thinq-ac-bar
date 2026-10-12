@@ -208,7 +208,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("LG ThinQ").font(.headline)
             SecureField("Personal Access Token", text: $pat)
-            TextField("Country (BR, US, KR…)", text: $country)
+            TextField("Country (BR, US…)", text: $country)
             Toggle("Launch at login", isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { _, enabled in
                     try? enabled ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()

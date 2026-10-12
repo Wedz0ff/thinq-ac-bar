@@ -39,9 +39,10 @@ struct ThinQ: Sendable {
     }
 
     /// Returns the `response` field of a successful reply, or throws the API's error message.
+    /// A 200 reply that is not JSON (a proxy or maintenance page) is an error too, not an empty result.
     static func decode(_ data: Data, status: Int) throws -> Any? {
         let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        guard status == 200 else {
+        guard status == 200, json != nil || data.isEmpty else {
             let message = (json?["error"] as? [String: Any])?["message"] as? String
             throw ThinQError(message: message ?? "HTTP \(status): \(String(decoding: data.prefix(200), as: UTF8.self))")
         }

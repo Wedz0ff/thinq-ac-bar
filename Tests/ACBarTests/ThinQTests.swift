@@ -30,4 +30,10 @@ final class ThinQTests: XCTestCase {
             XCTAssertEqual($0.localizedDescription, "HTTP 502: Bad Gateway")
         }
     }
+
+    func testDecodeThrowsForNonJsonSuccessBody() {
+        XCTAssertThrowsError(try ThinQ.decode(Data("<html>Blocked</html>".utf8), status: 200)) {
+            XCTAssertEqual($0.localizedDescription, "HTTP 200: <html>Blocked</html>")
+        }
+    }
 }
