@@ -104,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 final class AppState {
     var devices: [AC] = []
     var error: String?
+    var update: Update?
     var loading = false
     var pat = Keychain.get() ?? ""
     /// LG needs the account's country on every request; the Mac's region stands in for it.
@@ -117,6 +118,12 @@ final class AppState {
 
     init() {
         loading = !pat.isEmpty
+        Task {
+            while true {
+                update = await Update.check()
+                try? await Task.sleep(for: .seconds(86400))
+            }
+        }
         Task {
             while true {
                 await refresh()
@@ -229,6 +236,18 @@ struct ContentView: View {
                 }
                 .padding(8)
                 .background(.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+            }
+
+            if let update = state.update {
+                HStack {
+                    Image(systemName: "arrow.down.circle.fill").foregroundStyle(.blue)
+                    Text("Version \(update.version) is available").font(.caption)
+                    Spacer()
+                    Button("Download") { NSWorkspace.shared.open(update.url) }
+                        .controlSize(.small)
+                }
+                .padding(8)
+                .background(.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             }
 
             Divider()

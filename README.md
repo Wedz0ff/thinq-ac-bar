@@ -9,6 +9,7 @@ Control your LG ThinQ air conditioner from the Mac menu bar.
 - Shows your air conditioners in a menu bar popover.
 - Changes power, target temperature, mode, fan speed, swing, and energy saving.
 - Shows the target temperature in the menu bar while an AC is running.
+- Tells you when a newer version is available.
 
 ## Install
 
@@ -38,6 +39,8 @@ An app you build yourself is not blocked by macOS.
 LG requires the account's country on every request. The app sends your Mac's region (System Settings > General > Language & Region), or `US` if none is set, so that region must match the country of your LG account.
 
 The token is stored in the macOS Keychain. It is sent only to `api-aic.lgthinq.com`.
+
+Once a day the app asks `api.github.com` for the latest release of this repository, to offer updates. Nothing about you or your devices is sent.
 
 Because the app is ad-hoc signed, macOS may ask for Keychain access again after each rebuild. Choose **Always Allow**.
 
