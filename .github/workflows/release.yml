@@ -1,0 +1,21 @@
+name: Release
+
+# Pushing a tag like v1.0.0 builds the app and publishes it as a GitHub release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+      - run: ./build.sh
+      - run: ditto -c -k --keepParent ACBar.app ACBar.zip
+      - run: gh release create "$GITHUB_REF_NAME" ACBar.zip --verify-tag --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
