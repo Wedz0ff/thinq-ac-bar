@@ -20,6 +20,13 @@ extension AC {
     }
 }
 
+/// Text beside the menu bar icon: the target of the only running AC, or how many are running.
+func menuBarText(_ devices: [AC]) -> String? {
+    let running = devices.filter(\.on)
+    if running.count > 1 { return "\(running.count)" }
+    return running.first?.target.map { "\($0.formatted())°" }
+}
+
 /// Target after one +/- click, kept inside the supported range.
 func nextTarget(_ target: Double, by step: Double) -> Double {
     min(max(target + step, temperatureRange.lowerBound), temperatureRange.upperBound)
@@ -33,9 +40,12 @@ struct ACBarApp: App {
         MenuBarExtra {
             ContentView().environment(state)
         } label: {
-            let running = state.devices.first(where: \.on)
-            Image(systemName: running == nil ? "air.conditioner.horizontal" : "air.conditioner.horizontal.fill")
-            if let target = running?.target { Text("\(target.formatted())°") }
+            if state.error != nil {
+                Image(systemName: "exclamationmark.triangle")
+            } else {
+                Image(systemName: state.devices.contains(where: \.on) ? "air.conditioner.horizontal.fill" : "air.conditioner.horizontal")
+            }
+            if let text = menuBarText(state.devices) { Text(text) }
         }
         .menuBarExtraStyle(.window)
     }
