@@ -242,9 +242,8 @@ struct DeviceCard: View {
                 picker("Fan", fanSpeeds, binding(\.fan) { ["airFlow": ["windStrength": $0]] })
 
                 HStack {
-                    Toggle("Swing", isOn: binding(\.swing) { ["windDirection": ["rotateUpDown": $0]] })
-                    Spacer()
-                    Toggle("Energy saving", isOn: binding(\.powerSave) { ["powerSave": ["powerSaveEnabled": $0]] })
+                    pill("Swing", "arrow.up.and.down", binding(\.swing) { ["windDirection": ["rotateUpDown": $0]] })
+                    pill("Energy saving", "leaf.fill", binding(\.powerSave) { ["powerSave": ["powerSaveEnabled": $0]] })
                 }
             }
             .disabled(!ac.on)
@@ -269,6 +268,21 @@ struct DeviceCard: View {
         .buttonStyle(.plain)
         .disabled(ac.target == nil || next == ac.target)
         .accessibilityLabel(step < 0 ? "Decrease temperature" : "Increase temperature")
+    }
+
+    private func pill(_ title: String, _ symbol: String, _ isOn: Binding<Bool>) -> some View {
+        Button { isOn.wrappedValue.toggle() } label: {
+            Label(title, systemImage: symbol)
+                .font(.callout)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 7)
+                .foregroundStyle(isOn.wrappedValue ? Color.white : Color.primary)
+                .background(isOn.wrappedValue ? AnyShapeStyle(ac.tint) : AnyShapeStyle(.quaternary), in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isOn.wrappedValue ? .isSelected : [])
     }
 
     private func picker(_ title: String, _ options: [(String, String)], _ selection: Binding<String>) -> some View {
